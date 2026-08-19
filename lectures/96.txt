@@ -1,0 +1,123 @@
+C Programming Language - Connecting client to server
+
+previous session itana code likh chuke hain ke jo connection request aayi hain usko accept kar liya aur phir connection close kar diya
+
+ab pehle client side ka code likhenge phir data send karana, recieve karana, phir IP/port determine karana client side ka
+
+[something to add in previous session's code]	
+
+initial steps wahi rahegi -
+
+setup hints, getaddrinfo and socket creation
+
+farak sirf itana hain ki sever side ke code mein socket creation ke baad hum bind() function call karate hain, uski jagah yaha client side ke code mein connect() call karana hain
+
+client side ka code -
+
+#include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+#include<unistd.h>
+#include<errno.h>
+#include<arpa/inet.h>
+#include<sys/socket.h>
+#include<netdb.h>
+
+int main(int c,char *v[])
+{
+char *ip_of_server_machine;
+char *port_of_server_socket;
+struct addrinfo hints;
+struct addrinfo *ptr2top_node *t;
+int result;
+int client_socket_descriptor;
+
+if(c!=4)
+{
+printf("Usage : ./client ip_of_server_machine port_of_server_machine message_to_send\n");
+return 0;
+}
+ip_of_server_machine=v[1];
+port_of_server_socket=v[2];
+
+memset(&hints,0,sizeof(hints));
+hints.ai_family=AF_INET;
+hints.ai_socktype=SOCK_STREAM;
+// do not set flags as AI_PASSIVE on client side
+
+result=getaddrinfo(ip_of_server_machine,port_of_server_socket,&hints,&ptr2top_node);
+if(result==-1)
+{
+printf("Error : %s\n",gai_strerror(errno));
+return 0;
+}
+
+// today we are not specifying the client side port, 
+
+for(t=ptr2top_node;t!=NULL;t=t->ai_next)
+{
+client_socket_descriptor=socket(t->ai_family,t->ai_socktype,t->ai_protocol);
+if(client_socket_descriptor==-1) continue;
+
+result=connect(client_socket_descriptor,t->ai_addr,t->ai_addrlen);
+if(result==-1)
+{
+close(client_socket_descriptor);
+continue;
+}
+break;
+}
+freeaddrinfo(ptr2top_node);
+if(t==NULL)
+{
+printf("Unable to connect ot %s (%s) \n",ip_of_server_machine,port_of_server_socket);
+return 0;
+}
+
+printf("Connection with server established\n");
+
+// some code to send request data
+
+// some code to receive resonse data
+
+close(client_socket_descriptor);
+return 0;
+}
+
+
+
+// do not set flags as AI_PASSIVE on client side
+
+yaha apane ko listening socket nahi banana hain, isliye ai_flags ko AI_PASSIVE set nahi kiya
+
+
+
+server side par listening socket banane ke liye humne waha 1st argument NULL pass kiya tha, yaha par hume server ka ip dena hain -
+
+result=getaddrinfo(ip_of_server_machine,port_of_server_socket,&hints,&ptr2top_node);
+
+for calling getaddrinfo on client side
+- 1st argument should be ip of server mechine (base address of char array)
+- 2nd argument should be port number of server side socket (base address of char array)
+- 3rd argument should be address of hints
+- 4th argument should be the address of pointer
+
+
+server side par bind kara tha par yaha client side par connect karana hain -
+
+result=connect(client_socket_descriptor,t->ai_addr,t->ai_addrlen);
+
+
+/network-programming/example-1$ ./server
+
+(loop mein rahega)
+
+same machine par server hain so we can refer to it with localhost
+
+/network-programming/example-1$ ./client localhost 9696 "God is great"
+
+now search for what is loopback address - 127.0.0.1
+
+/network-programming/example-1$ ./client 127.0.0.1 9696 "God is great"
+
+

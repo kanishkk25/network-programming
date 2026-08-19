@@ -1,0 +1,269 @@
+C Programming Language - Data structure for various types of clients
+
+last session padha tha ki listen function ki wajah se woh jo socket hain woh mark ho gaya as a listening socket, matalab woh connection accept kar sakata hain, aane wali connections ko ek queue mein daal diya jaata hain
+
+next step hain uss queue se fetch karana -
+
+ab uss queue se fectch karane ke liye ek function hain accept naam ka
+
+ab jo accept function ke peeche ki kahani hain aur jis tarah se arguments woh receive karega woh confusing hain, toh aaj hum accept function wala code toh nahi dekhenge par uske jaisa kuch design karenge -
+
+maanlo scenario se kuch aisa ki kahi se kuch information se aa rahi hain woh ho sakata hain 1 byte ki ho ya 2 byte ki ho ya 8 byte ki, toh hume use information ko interpret karana hain, ab max possiblity 8 byte ki hain toh hum 8 byte ka allocation karwa lete hain
+
+[diagram]
+
+aur jo hume information dega usko iska base address pass kar dete hain woh yaha information rakh dega, par hume pata toh hona chahiye ke usko kya maanke padhe? 8 byte ka data maanke padhe ya 2 byte ka ya 1 byte hain ?
+
+reservation toh hain utana par usko interpret bhi toh karana hain, 8 byte can be intepreted as a 8 characters or 2 int's etc
+
+toh kya maanke padhe isko ? toh uske liye agar appropriet typecasting kar le toh kaam ho jaayega, kyuki hain toh address hi, agar char * mein type case karle toh phir padhenge toh 1 character padha jaayega, agar int * mein typecast karle toh kuch alag 
+
+peeche jo data structure hain woh saare 8-8 bytes ke record aur information kam toh woh toh wastage of memory hain isliye jaha 2 byte ki information hain waha 2 byte ka allocation hua, jaha 8 byte ki information hain waha 8 byte ka allocation
+
+toh yeh internal ds aise maintain kiya jaayega 
+
+toh yeh waha rakha jaayega (8 byte ki jo memory allocate kari) aur kisi tarah se pata chal jaaye ki kitane byte ki information rakhi gayi hain
+
+aur clearity ke liye seedhe example hi dekhate hain -
+
+
+scenario kuch aisa hain ki call center hain college ka usme indian students, american students and other countries ke students,
+
+call aate hain - call ek queue mein daal diye jaate hain - phir queue se fetch karana - student ki information print karana
+
+call center walo ke paas aise softwares rehte honge ki software call uthh ke queue mein daal deta hoga aur jab tak queue se fetch nahi kiya jaata toh humko kuch waiting ki tone wagera sunayi jaati hain, phir jaise hi woh queue se fetch ho jaata hoga toh phir somebody start speaking
+
+network programming mein bhi aisa hi hain queue mein daal di jaayegi jab fursat hogi toh fetch karenge
+
+jo cleint hain woh alag-alag protocols follow kar sakate hain, jo client ka address hain woh IPv4 / IPv6 aisa ho sakata hain, toh yaha woh pick karane ke liye ya toh indian student ho sakata hain ya american student ho sakata hain ya some other
+
+indian student ko indenitfy karane ke liye aadhar number (16)
+american student ko indentify karane ke liye social secuirty number (9)
+
+so let's design it -
+
+
+#include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+
+#define st_type unsigned int
+#define ST_INDIAN 1
+#define ST_AMERICAN 2
+#define ST_OTHER 3
+
+struct student
+{
+st_type student_type;
+};
+
+struct indian_student
+{
+st_type student_type;
+char aadhar_number[17];	// 1 extra for \0
+};
+struct american_student
+{
+st_type student_type;
+char social_security_numher[10];
+};
+struct other_student
+{
+st_type student_type;
+char unique_identification_number[101];
+char country_name[51];
+};
+
+struct student *queue[5];
+int front;
+
+void populate_queue()
+{
+struct indian_student *i_student;
+struct american_student *a_student;
+struct other_student *o_student;
+
+// data of first caller
+i_student=(struct indian_student *)malloc(sizeof(struct indian_student));
+i_student->student_type=ST_INDIAN;
+strcpy(i_student->aadhar_number,"1111222233334444");
+queue[0]=(struct student *)i_student;
+
+// data of second caller
+o_student=(struct other_student *)malloc(sizeof(struct other_student));
+o_student->student_type=ST_OTHER;
+strcpy(o_student->unqique_identification_number,"A13KD335M");
+strcpy(o_student->country_name,"Australia");
+queue[1]=(struct student *)o_student;
+
+// data of third caller
+a_student=(struct american_student *)malloc(sizeof(struct american_student));
+a_student->student_type=ST_AMERICAN;
+strcpy(a_student->social_security_number,"123456789");
+queue[2]=(struct student *)a_student;
+
+// data of fourth caller
+i_student=(struct indian_student *)malloc(sizeof(struct indian_student));
+i_student->student_type=ST_INDIAN;
+strcpy(i_student->aadhar_number,"8888999955551111");
+queue[3]=(struct student *)i_student;
+
+// data of fifth caller
+o_student=(struct other_student *)malloc(sizeof(struct other_student));
+o_student->student_type=ST_OTHER;
+strcpy(o_student->unqique_identification_number,"123412348888");
+strcpy(o_student->country_name,"South Africa");
+queue[4]=(struct student *)o_student;
+
+front=0;	// first fetch should serve record at 0th index
+}
+
+void release_queue()
+{
+int i;
+for(i=0;i<=4;i++) free(queue[i]);
+}
+
+void get_next_caller_information(struct student *s,int *ptr2block_with_reservation_size)
+{
+struct student *student_from_queue;
+int size_of_record_to_serve;
+int size_of_reservation_done_by_user;
+
+student_from_queue=queue[front];
+size_of_reservation_done_by_user=*ptr2block_with_reservation_size;
+
+if(student_from_queue->student_type==ST_INDIAN)
+{
+size_of_record_to_serve=sizeof(struct indian_student);
+}
+if(student_from_queue->student_type==ST_AMERICAN)
+{
+size_of_record_to_serve=sizeof(struct american_student);
+}
+if(student_from_queue->student_type==ST_OTHER)
+{
+size_of_record_to_serve=sizeof(struct other_student);
+}
+
+if(size_of_record_to_serve==size_of_reservation_done_by_user)
+{
+memcpy(s,student_from_queue,size_of_record_to_server);
+}
+if(size_of_record_to_serve<size_of_reservation_done_by_user)
+{
+memcpy(s,student_from_queue,size_of_record_to_server);
+*ptr2block_with_reservation_size=size_of_record_to_serve;
+}
+if(size_of_record_to_serve>size_of_reservation_done_by_user)
+{
+memcpy(s,student_from_queue,size_of_reservation_done_by_user);
+*ptr2block_with_reservation_size=size_of_record_to_serve;
+}
+
+
+front++;
+}
+
+int main()
+{
+struct other_student record; // we go for fattest data type
+
+struct indian_student *indian;
+struct american_student *american;
+int i;
+int original_size;
+int updated_size
+st_type student_type;
+populate_queue(); // to populate dummy data of callers
+
+for(i=1;i<=5;i++)
+{
+
+original_size=sizeof(record);
+updated_size=original_size;
+
+// calling get_next_caller_information to fetch data from queue
+
+get_next_caller_information((struct student *)&record,&updated_size);
+if(updated_size<=original_size)
+{
+student_type=record.student_stype;
+if(student_type==ST_INDIAN)
+{
+indian=(struct indian_student *)&record;
+printf("Indian student calling\n");
+printf("Aadhar number : %s\n",indian->aadhar_number);
+}
+if(student_type==ST_AMERICAN)
+{
+indian=(struct american_student *)&record;
+printf("American student calling\n");
+printf("Social security number : %s\n",american->social_security_number);
+}
+if(student_type==ST_OTHER)
+{
+printf("Student is neither American or Indian\n");
+printf("Srudent is from : %s\n",record.country_name);
+printf("Unique identification number : %s\n",record.unique_identification_number);
+}
+}
+if(updated_size>original_size)
+{
+printf("Information is incomplete\n");
+}
+
+// processing the fetched data
+
+}
+
+
+
+release_queue(); // to release memory
+return 0;
+}
+
+
+information toh actually iss type ki hogi - indian_student, american_student and other_student toh jab data fetch kiya jaayega toh pata kaise chalega kis type ka hain, toh uske liye simple trick -
+
+st_type student_type;
+
+define this member as the first member of the data type, memory alignment and structure padding wala concept, first member ke pehle kabhi padding introduce nahi ki jaayegi toh yeh tay hain ki jo bhi record hoga uske shuru ke kuch bytes student_type identify karane ke liye honge
+
+
+saamne wala ek size reserve kar lega, ab saamne wala toh kam bhi reserve kar sakata hain, documentation mein likha hua hain ki 50 ka ho sakata hain par usne 8 bytes hi reserve kiye toh 50 byte jab copy karane jaayenge toh 50 ki toh jagah hi nahi hain application toh crash ho jaayegi
+
+toh idea yeh hain ki hamare paas andar kuch data structure hain usme kuch addresses hain -
+
+[diagram]
+
+ab saamne wala jab fetch karane ki baat karega toh give this address, ek yeh approach ho sakata hain 
+
+par isme yeh issue ho sakata hain ki humne agar hamare record ka address de diya toh saamne wala pointer mein receive karke isko bigaad sakata hain
+
+ek better approach yeh ho sakata hain ki jab woh fetch karani ki baat karega toh uski tarah se ek address aayega apani taraf se apan copy karde record to specified location 
+
+saamne wala reserve karega, aur uss reserved ared ka address dede par isme ek issue hain ki uska reservation kisi kaarad se compatible nahi hain record se toh problem ho jaayegi aur yeh usko samajh mein bhi aana chahiye toh idea yeh hain ki 
+
+saamne wala banda kuch reserve karega uss reservation ki size ek variable mein rakhega, hume woh reserved area ka address dega aur size wale variable ka bhi address dega, ab hamare paas 2 addresses aa rahe hain toh hum reservation pata kar lenge
+
+1st - record agar utane ka hi hain toh koi issue hain copy kardo story ends
+
+2nd - ab 50 ka reservation hain aur record kam ka hain toh hum copy kar denge aur jitana copy hua hain woh size wale variable ko upadate kar denge 
+
+3rd - ab 50 ka reservation hain aur record 100 ka hain toh hum 100 copy kar denge aur size ko upadate kar denge ab saamne wale ki responsiblity hain ki woh call karane se pehle jo size thi aur call complete hone ke baad jo size hain usko campare kare - agar size mein farak hain toh accordingly woh decision le
+
+
+
+struct other_student record; // we go for fattest data type
+
+yeh main jo record hain iska type change kar diya 
+
+struct indian_student record;
+struct american_student record;
+
+toh jo decision liye the student_type se uske andar ka sab change hoga
+
+
+toh next session hum jab accept ko call karenge toh aisa kucb hi karenge - parameter kisi aur type ka hoga aur structure ham kisi aur type ka banyenge 
+

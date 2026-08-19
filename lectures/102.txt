@@ -1,0 +1,309 @@
+C Programming Language - Fetch data returned by thread
+
+previous session kisi thread par chalate huye function ko kaise data pass karana, yeh seekha tha
+
+ab ulta, woh jo function seperate thread par chal raha hain woh kuch value lotana chahta hain, toh usko kaise recieve kiya jaaye ?
+
+
+main thread par main function chal raha hain, isse ek naya thread bana, toh ek function jo uss naye thread par chalega - iss function ko kisi tarah se 10 aur 20 pass kiya wrap karke aur yeh jo sum compute kar raha hain woh main function par wapas chahiye	
+
+toh let's see -
+
+technique 1 -
+
+yeh ek simple trick hain, isme yeh nahi kahenge ke woh function return karega -
+
+#include<stdlib.h>
+#include<pthread.h>
+
+struct data_wrapper
+{
+int num1;
+int num2;
+int sum;
+};
+void * sam(void *ptr)
+{
+struct data_wrapper *p;
+p=(struct data_wrapper *)ptr;
+p->sum=p->num1+p->num2;
+return NULL;
+}
+
+int main()
+{
+struct data_wrapper s;
+pthread_t thread_id;
+int st;
+
+s.num1=10;
+s.num2=20;
+
+st=pthread_create(&thread_it,NULL,sam,(void *)&s);
+if(st!=0)
+{
+printf("Unable to create thread\n");
+return 0;
+}
+pthread_join(thread_it,NULL);
+printf("Sum is  %d\n",s.sum);
+return 0;
+}
+
+pthread_join(thread_it);
+
+main function/thread ko rukana padega jab tak sam thread ka kaam nahi ho jaata hain
+
+yeh koi return karana nahi hua
+
+{
+int pthread_join(pthread_t thread_id,void **retval)
+
+Purpose: Waits for a specific thread to finish.
+
+pthread_join(thread_id,(void **)return_value);
+
+thread_id → id of the thread to wait for.
+return_value → Address where the thread's return value is stored. Use NULL if you don't need it.
+
+Returns: 0 on success; a non-zero error code on failure.
+
+pthread_join() → wait for a thread to finish and optionally collect its result.
+}
+
+technique 2 -
+
+Don't ever use this technique -
+
+#include<stdlib.h>
+#include<pthread.h>
+
+struct data_wrapper
+{
+int num1;
+int num2;
+int sum;
+};
+void * sam(void *ptr)
+{
+struct data_wrapper *p;
+int sum;
+p=(struct data_wrapper *)ptr;
+sum=p->num1+p->num2;
+return (void  *)&sum;		// do not put yourself in this habit
+}
+
+int main()
+{
+struct data_wrapper s;
+pthread_t thread_id;
+int st;
+int x;
+s.num1=10;
+s.num2=20;
+
+st=pthread_create(&thread_it,NULL,sam,(void *)&s);
+if(st!=0)
+{
+printf("Unable to create thread\n");
+return 0;
+}
+pthread_join(thread_it,(void **)&x);
+printf("Sum is  %d\n",x);
+return 0;
+}
+
+iss example mein abhi technqiue sahi hain par hamesha aisa ho zaruri nahi, isliye yeh kabhi nahi karana hain
+
+technique 3 -
+
+yeh right way hain -
+
+#include<stdlib.h>
+#include<pthread.h>
+#include<stdlib.h>
+
+struct data_wrapper
+{
+int num1;
+int num2;
+int sum;
+};
+void * sam(void *ptr)
+{
+struct data_wrapper *p;
+int *k;
+p=(struct data_wrapper *)ptr;
+
+k=(int *)malloc(sizeof(int));
+if(k!=NULL)
+{
+*k=p->num1+p->num2;
+return (void *)k;
+}
+else
+{
+return NULL;
+}
+}
+
+int main()
+{
+struct data_wrapper s;
+pthread_t thread_id;
+int st;
+int *x;
+s.num1=10;
+s.num2=20;
+
+st=pthread_create(&thread_it,NULL,sam,(void *)&s);
+if(st!=0)
+{
+printf("Unable to create thread\n");
+return 0;
+}
+
+pthread_join(thread_it,(void **)&x);
+printf("Sum is  %d\n",*x);
+
+free(x) 	// important to avoid memory leak
+
+return 0;
+}
+
+maanlo multiple values chahiye apane ko toh simple hain - 
+
+
+#include<stdlib.h>
+#include<pthread.h>
+#include<stdlib.h>
+
+struct data_wrapper
+{
+int num1;
+int num2;
+};
+struct result_wrapper
+{
+int sum;
+int product
+};
+void * sam(void *ptr)
+{
+struct data_wrapper *p;
+struct result_wrapper *k;
+p=(struct data_wrapper *)ptr;
+
+k=(struct result_wrapper *)malloc(sizeof(struct result_wrapper));
+if(k!=NULL)
+{
+k->sum=p->num1+p->num2;
+k->product=p->num1*p->num2;
+return (void *)k;
+}
+else
+{
+return NULL;
+}
+}
+
+int main()
+{
+struct data_wrapper s;
+pthread_t thread_id;
+int st;
+struct result_wrapper *x;
+s.num1=10;
+s.num2=20;
+
+st=pthread_create(&thread_it,NULL,sam,(void *)&s);
+if(st!=0)
+{
+printf("Unable to create thread\n");
+return 0;
+}
+
+pthread_join(thread_it,(void **)&x);
+printf("Sum is  %d\n",x->sum);
+printf("Product is  %d\n",x->product );
+
+free(x) 	// important to avoid memory leak
+
+return 0; 
+}
+
+
+Additional technique -
+
+#include<stdlib.h>
+#include<pthread.h>
+#include<stdlib.h>
+
+struct data_wrapper
+{
+int num1;
+int num2;
+};
+struct result_wrapper
+{
+int sum;
+int product
+};
+void * sam(void *ptr)
+{
+struct data_wrapper *p;
+struct result_wrapper *k;
+p=(struct data_wrapper *)ptr;
+
+k=(struct result_wrapper *)malloc(sizeof(struct result_wrapper));
+if(k!=NULL)
+{
+k->sum=p->num1+p->num2;
+k->product=p->num1*p->num2;
+pthread_exit((void *)k);
+}
+else
+{
+return NULL;
+}
+}
+
+int main()
+{
+struct data_wrapper s;
+pthread_t thread_id;
+int st;
+struct result_wrapper *x;
+s.num1=10;
+s.num2=20;
+
+st=pthread_create(&thread_it,NULL,sam,(void *)&s);
+if(st!=0)
+{
+printf("Unable to create thread\n");
+return 0;
+}
+
+pthread_join(thread_it,(void **)&x);
+printf("Sum is  %d\n",x->sum);
+printf("Product is  %d\n",x->product );
+
+free(x) 	// important to avoid memory leak
+
+return 0; 
+}
+
+pthread_exit((void *)k);
+
+return karane ki bajaye pthread_exit ko call kiya for exiting from thread 
+
+
+pthread_exit()
+Purpose: Ends the calling thread.
+
+pthread_exit((void *)return_value);
+
+return_value → Value that thread returns to pthread_join(). Can be NULL.
+Returns: Nothing (void).
+
+In short: pthread_exit() → stop the current thread and optionally give a result to the thread that joins it.

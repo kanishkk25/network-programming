@@ -1,0 +1,225 @@
+C Programming Language - Create Thread
+
+Multi Tasking -
+
+humne operating system ko bola chrome execute karo, 
+
+chrome ek program / application / process hain
+
+ab chrome yeh application chal rahi hain aur in parallel humne VLC player yeh application execute karwa di, phir Open Ofiice Writer yeh application execute karwadi
+
+
+[diagram]
+
+yeh sab programs hi hain par technical terms mein baat kare toh process
+
+toh ab operating system yeh allow kar raha hain ki hum multiple ek saath chala sake
+
+so this is an example of Multi-tasking, kai saari applications ka parallel mein chalana is Multi-tasking
+
+yeh feature OS provide kar raha hain, hum multi-tasking ke beech mein nahi ghus sakate 
+
+hamare bas mein hain - Multi-Threading
+
+Multi Threading -
+
+OS ko bola Open Office Writer chalane ko - Open Office Writer mein ek function hain jo edit karane deta hain, ek function hain spell check se related, ek aur function hain auto-indentation se related
+
+yeh sab alag-alag functions hain aur yeh bhi parallel mein chal rahe hain, tab hi toh aisa hota hain ki apan ne kuch type kiya phir space di malalab ek word khatam hua - ab uss word mein jo bhi likha hain woh spelling mistake hain toh waha highlighted jaisa aa jaata hain jo hume yeh notify kar raha hain ki kuch galati huyi hain, isi tarah se indentation bhi ho jaata hain apane aap 
+
+toh Open Office Writer yeh ek application / process hain
+
+phir yeh functions ek tarah se sab-processes hain, toh inn functions ka parallel mein chalana is Multi-Threading
+
+Multi-Threading ke hisaab se yeh har ek function ek thread hain
+
+Multi-Threading matalab - multiple functions ka parallel mein chalana
+Multi-Tasking matalab - multiple applications ka parallel mein chalana 
+
+Next -
+
+abcd.c
+
+void sam()
+{
+-
+-			3 instructions
+-
+}
+void tom()
+{
+-
+-
+-			5 instructions
+-
+-
+}
+int main()
+{
+-
+sam();
+-
+-			9 instructions
+tom();
+-
+-
+-
+return 0;
+}
+
+abcd.out execute karane ko kaha gaya toh there will be a single default thread, uss par main function ko load kar diya jaayega, toh woh ek tarah ka stack hain
+
+stack par pura function load kiya jaayega (intructions ulate nahi honge)
+
+stack mein main ke 9 instructions load kiye gaye -
+
+-
+-
+sam();
+-
+-
+-
+tom();
+-
+-
+return 0;
+--------
+stack
+
+ab memory mein 1 thread hain toh pura time - jitana diya jaa sakata hain usi thread ko diya jaayega - aur uss thread se instruction pop karake process kiye jaayenge -
+
+toh pehla instruction pop hoke process ho gaya
+
+phir agala instruction pop kiya toh samajh mein aata hain ki sam() ko call karana hain toh sam() function ki ek copy stack mein load kari jaayegi, matalab woh instructions load honge stack mein -
+
+
+-
+-		3 instructions of sam()
+-
+x x sam(); x x
+-
+-
+-
+tom();
+-
+-
+return 0;
+------------
+stack
+
+phir ab sam() ke instructions pop karake process huye 
+
+phir main ke instruction pop & process - tom() ko call kiya hain toh stack mein phir tom() ke instruction load kiye jaayenge - tom() ke sabhi instruction pop karke process honge - phir main ke bache instruction pop & process honge - return 0; - kahani khatam
+
+ideally aisa hota hain
+
+ab hume kya karana hain ek aur thread create karana hain - user thread kaha jaayega badhi badhi baate kare toh, aur hum koi function uss par load karenge toh 2 threads ho jaayenge 
+
+ek main thread jiss par main funtion load hota hain
+
+phir main se jo bhi function call hoga woh bhi usi thread par load hoga - phir uss function se koi function call hoga toh woh bhi main thread par load hoga
+
+koi bhi function call karane ka code jiss thread par rehta hain woh function usi thread par load hokar chalega
+
+toh by default jo thread banata hain usko main thread kahenge
+
+hamara example rahega - ek naya thread create karana uss naye thread ke upper ek function load karana 
+
+phir 2 threads ho jaayenge toh context switching hoga - thhoda time main thread ka thhoda time user thread ka
+
+let's write an example -
+
+#include<stdio.h>
+#include<pthread.h>
+
+void * sam(void *ptr)
+{
+int y;
+for(y=1001;y<=1100;y++)
+{
+printf("%d  ",y);
+}
+return NULL;
+}
+
+int main()
+{
+pthread_t thread_id;
+int x;
+int result;
+
+result=pthread_create(&thread_id,NULL,sam,NULL);
+
+if(result==0) 
+{
+printf("User thread created\n");
+}
+else
+{
+printf("Unable to create user thread\n");
+return 0;
+}
+for(x=1;x<=100;x++)
+{
+printf("%d  ",x);
+}
+
+pthread_join(thread_id,NULL);
+
+printf("main function is about to end\n");
+return 0;
+}
+
+pthread_t thread_id;
+
+har thread ko ek id milega jiske bharose aage kuch kaam hoga, ab jis platform par execute kar rahe hain uss par thread id ka data type - unsigned long int hain, dusare platform par alag bhi ho sakata hain, isliye pthread_t ka use kiya hain 
+
+pthread_create(&thread_id,NULL,sam,NULL);
+
+1st argument - pthread_create se thread create hoga, internally jo thread kiya jaayega usko ek unique id milega, woh id humne jiska address pass kiya hain usko assign kar diya jaayega 
+
+2nd argument - NULL (we don't care right now)
+
+3rd arguemnt - uss function ka address jo uss thread par load karana hain
+
+4th argument - NULL (we don't care right now)
+
+pthread_create function return 0 if thread gets created else returns 1
+
+result=pthread_create(&thread_id,NULL,sam,NULL);
+
+toh iss line ki wajah se ek thread ban jaayega uss par sam ko load kar diya jaayega aur yeh jo code hain woh chalega main thread par 
+
+aisa na ho ki main ka code pehle khatam ho jaaye isliye we will put the main thread in waiting mode till the user thread is not complete toh -
+
+pthread_join(thread_id,NULL);
+
+iski wajah se main thread ki agali line kaam nahi karegi jab tak woh thread jiski id humne di hain woh thread apana kaam pura nahi kar leta
+
+main is waiting for the user thread to complete it's task and join this thread (from in which pthread_join is been called)
+
+kis thread ko kitana time milega uss par hamara koi control nahi hain 
+
+next -
+
+Network programming ki kahaani thi ki request aati hain - humne request (incoming connection) ko accept karane ke liye accept() function call kar rakha hain
+
+
+loop
+{
+accept()
+---------
+---------		yaha processing
+---------
+---------
+}
+
+phir loop se agali request and then uski processing 
+
+toh isme gadbad yeh hain ki ek connection request aayi - ab iski process agar 10 minutes tak chalane wali hain toh agali request 10 minutes tak accept nahi kari jaayegi, woh backlog queue mein aa jaayehi request par accept nahi hogi, phir backlog queue full hone ke baad toh phir ignore kar diya jaayega agali request ko
+
+toh hona kuch aisa chahiye ki teh jo processing hain yeh kisi tarah se seperate thread par chal jaaye
+
+toh hoga yeh ke main thread par yeh loop chal raha hain, connection request accept karane ke baad uski process chali gayi separate thread par, main thread par woh loop fatak se chal ke wapas se agali request accept karega, uski processing again seperate thread par
+
+matalab apana jo server hain woh Multithreaded ho jaayega, toh uske liye Multi-Threading toh seekhe

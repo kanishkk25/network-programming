@@ -1,0 +1,141 @@
+C Programming Language - Accepting client connection
+
+previous session yeh discuss kiya tha ki kaise connected client ki information server side par maintain ki jaati hain,
+
+now let's proceed with our code, hume basically jo queue mein connection request hain use accept karana hain -
+
+server.c
+
+#include<stdio.h>
+#include<string.>
+#include<errno.h>
+#include<arpa/inet.h>
+#include<sys/socket.h>
+#include<netdb.h>
+#include<unistd.h>
+int main()
+{
+struct addrinfo hints;
+int result;
+struct addrinfo *ptr2top_node *t;
+struct sockaddr_storage client_sockaddr_storage;
+socklen_t client_sockaddr_size;
+struct sockaddr_in *client_sockaddr_in;
+int client_socket_descriptor;
+
+// setup hints structure
+memset(&hints,0,sizeof(hints));
+hints.ai_family=AF_INET;
+hints.ai_socktype=SOCK_STREAM;
+hints.ai_flags=AI_PASSIVE;
+
+// call getaddrinfo
+result=getaddrinfo(NULL,"9696",&hints,&ptr2top_node);
+if(result==-1)
+{
+printf("Error : %s\n",gai_strerror(errno));
+return 0;
+}
+
+for(t=ptr2top_node;t!=NULL;t=t->ai_next)
+{
+server_socket_descriptor=socket(t->ai_family,t->ai_socktype,t->ai_protocol);
+if(server_socket_descriptor==-1) continue;
+result=bind(server_socket_descriptor,t->ai_addr,t->ai_addrlen);
+if(result==-1)
+{
+close(server_socket_descriptor);
+continue;
+}
+break;	// socket creation and bind call done with no errors
+}
+// release linked list
+freeaddrinfo(ptr2top_node);
+
+if(t==NULL)
+{
+printf("Unable to create socket\n");
+return 0;
+}
+
+result=listen(server_socket_descriptor,100);
+if(result==-1)
+{
+printf("Unable to listen for connections\n");
+printf("Error : %s\n",strerror(errno));
+close(server_socket_descriptor);
+return 0;
+}
+
+while(1)
+{
+printf("Server is ready to accept connection on port 9696\n");
+
+client_sockaddr_size=sizeof(struct sockaddr_storage);
+
+// accept connection from backlog queue, if backlog queue is empty wait for connection
+
+client_socket_descriptor=accept(server_socket_descriptor,(struct sockaddr *)&client_sockaddr_storage,&client_sockaddr_size);
+
+if(client_socket_descriptor==-1)
+{
+printf("Unable to accept connection request\n");
+printf("Error : %s\n",strerror(errno));
+continue;
+}
+
+printf("Connection request arrived and accepted\n");	// added in next lecture
+
+if(client_sockaddr_size<=sizeof(struct sockaddr_storage))
+{
+if(client_sockaddr_storage.ss_family==AF_INET)
+{
+client_sockaddr_in=(struct sockaddr_in *)&client_sockaddr_storage;
+
+// some code to extract ip of client
+// some code to extract port of client 
+}
+
+}
+else
+{
+printf("Unable to determine client IP/port\n");
+}
+
+// some code to extract request data
+
+// some code to send response
+
+// close client connection
+close(client_socket_descriptor);
+}
+close(server_socket_descriptor);
+retrun 0;
+}
+
+struct sockaddr hain struct student jaisa
+
+struct sockaddr_in hain struct indian_student jaisa
+
+struct sockaddr_in6 jaise hain struct american_student
+
+struct sockaddr_storage hain struct other_student
+
+jaise struct student mein tha - student_type waise hi struct sockaddr mein hain sa_family
+
+struct sockaddr_in mein sin_family
+
+struct sockaddr_in6 mein sin6_family
+
+struct sockaddr_storage mein ss_family
+
+ab woh jo parameter variable hain accept function ka, woh struct sockaddr * hain
+
+connected client ka address IPv4 ke hisaab se hain toh struct sockaddr_in ke hisaab se information milegi, IPv6 ke hisaab se hain toh struct sockaddr_in6, unspecified hain toh struc sockaddr_storage
+
+
+struct sockaddr_storage client_sockaddr_storage;
+this is like sutrct other_student // fattest data type
+
+socklen_t client_sockaddr_size;
+this is like size factor 

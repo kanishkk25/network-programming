@@ -1,0 +1,87 @@
+C Programming Language - Data structures related to connected clients
+
+sabse pehle let's start with software port, it's nothing but kind of a number jiske saath ek service associated rehti hain, technically ek program,
+
+apane ko uss tak request pahuchani hain ek dusare program ke through jo ho sakata hain usi machine par ho ya dusari machine par toh woh program apane aap ko jis port number se associate kar chuka hain uss port number par request bheji hain toh baat us progam tak pahuch jaayegi 
+
+toh port number 0 se 65535 (0 is not supposed to be use)
+		1 se 65535
+
+ek guideline hain ke ek accha program apani application ke liye 1 se 1023 tak chhod dega, (haa agar web server bana rahe ho toh port 80 le lijiye) 
+
+(default port number dekhana)
+
+
+ephemeral ports iske baare mein padana
+49152 - 65535
+
+toh networking mein ports ka use kiya jaata hain, program A and program B aapas mein communicate karana chahate hain toh dono ports ka use karenge sockets create karenge, port se bind karenge aur sab hoga
+
+search for What is software port?
+
+
+ab behind the scene kya ho raha hain woh dekhate hain -
+
+let say ek machine hain jiska IP hain 10.0.0.11
+
+[diagram]
+
+program ne ek socket create kiya usko bind kar diya 9696 par aur woh as a listener mark hain, matalab woh listening mode mein hain, toh OS ne ek data structure bana rakha hain usme yeh gyan hain aur protocol wagera ka bhi gyaan hoga
+
+aise hi ho sakata hain ek aur program ho usne bhi socket create kiya ho woh bhi listening mode mein ho
+
+[diagram]
+
+ab dono listening mode mein pade huye hain, ab 
+
+[diagram]
+
+yeh machine iska IP 10.0.0.8 
+
+ab jo request jaa sakati hain woh inn type ki ho sakati hain -
+
+1) connection establish karane se related
+2) connection establish ho chuka hain toh data send karane se related
+3) connection close karane se related
+
+ab ispe ek program hain - A, iss program se request initiate ki jaati hain, uske liye woh ek socket create karata hain - bind karata hain 26263 par aur request bhej raha hain 10.0.0.11 port number - 9696 ko aur yeh request hain connection establish karane ki 
+
+10.0.0.11 IP ki wajah se request uss machine ke Operating system tak pahuch jaati hain woh dekhata hain apane ds mein 9696 hain kya toh hain, toh woh ds mein entry kar dega, ds (queue) mein aayega client machine ka IP aur port wagera -
+
+[diagram]
+
+ab usi client machine par ek aur program bhi ho sakata hain woh bhi aise hi connection establish karane ki request bhejata hain toh udhar ek aur entry ho jaayegi
+
+[diagram]
+
+abhi data fetch nahi hua hain, abhi listening mode mein hain aur woh uss queue mein aake pada hua hain
+
+now ek banda hain isi server machine par jo fetch karega, matalab jo accept karane ki baat karega, ab sabse important part - jab yeh socket bind hua hoga toh socket descriptor milega (maanlo 75), ab jab fetch karane ki baat kari jaayegi perticular socket descriptor (75) se toh underlying jo bhi system hain woh kya karega ?
+
+ek aur table maintain kari jaayegi accepted connections (socket) ki information -
+
+ab jab kisi socket descriptor (75) se fetch karane ki baat hogi toh uss socket descriptor (75) ke against jo queue hain uss pehli entry hat jaayegi aur eidhar woh entry aa jaayegi + kuch data structure bhi hoga, aur isko bhi ek socket descriptor milega matalab ek naya socket banega (let say 101) aur woh usi port number (9696) se associated rahega 
+
+ab agar kisi dusare socket descriptor (95) se fetch karane ki baat hogi toh aisa hi hoga aur uss ds mein entry ho jaayegi 
+
+ab jab bhi client machine ka program A data send karega toh usme bhi IP wagera ka gyaan hoga, toh server machine ke OS ke paas aayega - connection establish ho chuka hain toh data barabar appropriet socket ke buffer mein pahuch jaayega 
+
+so it is identify on the basis of client port number and client IP and protocol 
+
+karana yeh padega ki jab hum accept ko call karenge toh hum descriptor batayenge + hum ek address denge buffer ka aur ek block ka address denge jisme length ho (last session jaisa)
+
+accept woh ds se fetch karke accepted connections mein lega peeche jo bhi code chalega uski wajah se + hamare buffer mein wog gyaan rakh diya jaaga (accepted connection ka IP + Port and protocol wagera) phir woh kaise nilaalenge woh dekhana hain abhi
+
+par all this is happening behind the scene 
+
+(exactly aisi tables nahi banati hain proper ds wagera banate hain)
+
+point yeh hain ki connection establish ho gaya, hum jab fetch karenge toh ek naya socket banega, ab woh fetch karate samay bane ya pehle bane we don't care, humko toh woh tab milega jab hum fetch karenge, jab accept karenge connection request 
+
+toh ek naya socket banega, socket usi port number se bind hoga jis port se woh listening socket bound tha, par usko associated kiya jaayega jis client se connection ki request aayi hain uske port se + uske IP se + protocol
+
+ab jab data aayega toh barabar uss socket se related queue mein pahuch jaayega, matalab jab humko data receive karana hoga tab bhi socket descriptor batana padega, jab hume kuch send karana hain tab bhi hum socket descriptor banayenge - socket descriptor ke bharose eidhar kuch send ki queue hogi usme daal diya jaayega, eidhar send ki queue ki wajah se woh appropriet program tak pahucha jaayega, kyuki jab pahuchega toh IP aur port number hoga
+
+toh agar Program A ko bhejana chahte hain toh isse related socket descriptor hoga hamare paas, toh uss socket descriptor ke bharose hum likhenge toh Accepted connection mein kahi toh bhi uss socket descriptor ke against send queue hogi usme likha jaayega aur uski wajah se woh barabar program A tak pahuch jaayega kyuki eidhar sab program ka IP/port wagera sab hain
+
+so this is how things are manage	

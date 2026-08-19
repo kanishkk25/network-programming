@@ -1,0 +1,342 @@
+Network Programming (Server Side - Part 1)
+
+now let's start Network Programming -
+
+ab Network Programming matalab exactly kya ? toh story simple -
+
+Program A			Program B
+
+aapas mein communicate karana chahte hain aur ho sakata hain woh same machine par ho ya different machine par ho, toh irrespecitve of where they are yeh communicate karana chahte hain 
+
+apan clearity ke liye yahi maanke chalate hain ke alag-alag machine par hain 
+
+toh
+
+Program A				Program B
+ek machine par			dusari machine par
+
+
+isme se ek program server kehlaayega, ek program client keh laayega 
+
+
+(client)				(server)
+Program A				Program B
+ek machine par			dusari machine par
+
+aur kai saare clients ho sakate hain - 
+
+program A ki ek copy ek machine par, program A ki ek dusari copy dusari machine par 
+
+
+toh ek misconception hain ki server aur clients machines hoti hain, jabki technically server ek program rehta hain, jo request initiate karata hain woh client program, woh request jis program tak pahuchati hain finally woh server program
+
+ab machines aapas mein connected hain 
+
+ho sakata hain 2 client machines connected hain server wali machine se (2 NIC ho sakate hain)
+
+ya ho sakata hain router/switch hain, dono client wali machines router/switch se connecte hain, aur phir woh server machine se connected hain
+
+(server machine - woh machine jis par server program chal raha hain
+client machines - woh machine jis par client program chal raha hain)
+
+ya yeh bhi ho sakata hain ke kahi ek machines hain jis par server program hain, router/switch kisi modem se connected hain, woh modem jo service provider hain usse connected hain aur yeh server machine kahi toh bhi uss Internet ka hissa hain jiska access yeh service provider de raha hain
+
+so, whatever it may be finally machines connected hain
+
+
+ab har machine ka kuch unique address rehta hain, badi badi baat kare toh IP
+
+(ek hi network ka hissa hain toh ek hi family IP addresses chalate hain)
+
+
+yeh padhana hain -
+
+TCP/IP Protocol
+UDP Protocol
+IPv4 / IPv6
+ek machines se multiple IP associated ho sakate hain, kaise?
+
+
+so, now let's start with server side programming -
+
+Client Program 			Server Program 
+[diagram]				[diagram]
+
+
+toh server program ko karana kya hain ki ek socket create karana hain aur usko OS kuch ports provide karata hain, toh socket create karana hain aur port se bind karana hain aur phir yeh listening mode mein chala jaayega 
+
+listening mode mein chala jaayega matalab request access karane ke liye taiyaar ho jaayega
+
+client program mein bhi ek socket create karana hain woh bhi ek tarah se bind kiya jaata hain, aur phir connect karana hain server program se toh woh jaayegi request OS ke through appropriate program tak, jab connect karane ki baat aayegi toh IP specify karana hoga aur Port, IP uss machine ka jis par server program chal raha aur woh server program socket jo jiss port se bind kar chuka hain woh port number bhi specify karana padega	
+
+
+server program chal raha hain matalab server program ne ek socket create kar liya hain - socket ko ek IP and ek port se bind kar diya hain (port OS ne provide kiya hain), aur woh ab connections accept karane ke liye taiyaar hain
+
+client side se kuch request bhejana hain toh socket create karenge bind - karenge connect karenge - connect kisse karane se kahenge ? ek IP se aur ek port specify karenge, IP kaunsa ? - server program jis machine par chal raha hain uss machine ka IP aur Port kaunsa ? - jis par server program ne socket bind kiya hain woh port
+
+
+Assignment -
+Port numbers and their range
+
+ab detailed mein baat karate hain -
+
+Server side code -
+
+step 1: Note / paper (preferences)
+
+sabse pehle hum ek note jaise create karenge ya ek paper par apane preferences likh denge
+
+toh iski liye basically hume ek structure create karana hain -
+
+struct addrinfo hints;
+
+hum apane preferences bata rahe hain, unn preferences ke hisaab se ek function jab hum call karenge toh woh kuch karega
+
+ab documentaion yeh kehta hain ki structure ke jitane bhi bytes hain unko 0 se initialize karan hain -
+
+iss structure ke kuch members hain, aage hum ek function call karenge uss function ko unn members ki value agar 0 milati hain toh ek tarah se behave karega aur 0 nahi hoga garbage hogi toh unn garbage ko garbage na maanke woh kuch samajh ke alag tarah se behave karega woh humko nahi chahiye isliye hum sabko 0 set karenge 
+
+toh -
+
+memset(&hints,0,sizeof(hints));
+
+memset ko ek address diya aur bola sab par 0 set kardo kitane bytes par ? toh base address se lekar hum jo size specify karenge waha tak 0 rakh dega
+
+ab struct addrinfo iske against ek member ai_family hain usko IPv4 set karenge -
+
+hints.ai_family=AF_INET;  	// IPv4
+
+AF_INET for IPv4
+AF_INET6 for IPv6
+AF_UNSPEC for if you do not wish to specify
+
+
+ab hum chuki TCP/IP protocol follow karwana chahte hain toh ek aur member hain - ai_socktype isko hum assign karenge SOCK_STREAM ke against jo hain
+
+hints.ai_socktype=SOCK_STREAM;
+
+isse yeh hoga ki hum TCP ki baat kar rahe hain
+
+agar SOCK_DGRAM likhate toh UDP ki baat hoti 
+
+
+toh struct addrinfo ke against jitane members hain sabko 0 set kiya phir 2 members ke against kuch rakh diya
+
+ab ek aur important baat hain - ai_flag, iske against AI_PASSIVE set karana hain
+
+by default yeh nahi rehta toh agar hum yeh set kar rahe hain toh hum keh rahe hain ki uss socket ke through hum request accept kar sake aisi wyavstha chahiye humko, the socket will be capable of accepting request
+
+
+struct addrinfo hints;
+
+memset(&hints,0,sizeof(hints));
+
+hints.ai_family=AF_INET;
+hints.ai_socktype=SOCK_STREAM;
+hints.ai_flag=AI_PASSIVE;
+
+ab uss function ko call karana hain jisko hum chithhi thama denge phir uss chitthi mein jo bhi humne preferences specify kiye uske hisaab se posibilities generate karega, aur woh saari posibilites ki linked list banegi
+
+
+stept 2: getaddrinfo function
+
+yeh woh function hain isko sabse pehle NULL pass karana hain -
+
+1st argument -
+
+getaddrinfo(NULL,
+
+since flags is set to AI_PASSIVE and we are passing NULL as first argument 	
+
+iska matalab yeh hain ki aage jo socket banega woh machine jis par yeh program chalane wala hain uske jitane bhi IPs honge sabse yeh associate ho jaayega
+
+when the socket is bound, it gets associated to a wildcard IP, which means a request arriving on any IP for port (9696) will be received by this socket.
+
+this was about the first argument for getaddrinfo
+
+2nd argument -
+
+woh port number as a string -
+
+getaddrinfo(NULL,"9696",
+
+3rd argument -
+
+apane preferences, hints structure ka base address -
+
+getaddrinfo(NULL,"9696",&hints,
+
+4th argument -
+
+address of a pointer to a struct addrinfo structure
+
+toh hum pehle
+
+struct addrinfo *ptr2top_node;
+
+linked list ka first node 
+
+getaddrinfo(NULL,"9696",&hints,&ptr2top_node);
+
+ab getaddrinfo kya karega ?
+
+humne jo yeh hints specified kiye hain, 3rd arguement mein jiska address pass kiya woh structure ka hain usme preferences likh rakhe hain, toh uske against jitani possibilities hain,
+
+possibilities matalab humko aage jo socket create karana hain usko hume ek struct addrinfo ke structure ka address dena hain, ab humne saari chize toh nahi bhari na, humne toh kewal 3 chize bhari aur chize bharana hain toh instead of forcing something internally OS ha hardware jo bhi hain network configuration jo bhi hain uski wajah se humne jo speicfiy kiya uske liye jitane possible combinations available hain unn combination se related alag-alag struct addrinfo ke structures banaye jaayeng, unn saare structures ki linked list banegi aur uss linked list ke top wale ka address humne 4th arguement ke taur par jis pointer ka address diya hain uske against rakh diya jaayega 
+
+and if everything is successfull toh kuch return kiya jaayega
+
+iske baad hum uss linked list par traverse karenge, har node ka jo address hoga uske bharose hum socket banane ki koshish karenge, agar woh fail ho gaya toh agle par jaayenge - woh fail hua toh agle par jaayenge
+
+aur jaise hi socket ban jaayega hum apani koshish rok denge 
+
+step 3:
+
+traverse the linked list and try to create socket using socket function
+
+aur socket function ko family ke baare mein batana hain, socket type and protocol uss node ke against ke jo uss linked list ka part hain jo getaddrinfo ne banayi
+
+socket function ek descriptor return karega agar socket ban gaya toh 
+
+step 4:
+
+bind function call karana
+
+matalab actual binding socket ki iske baad socket ko listening mode mein daalenge aur request accept karana start karenge
+
+1st argument - socket_descriptor
+2nd argument - linked list ke jiss node se socket bana jisko t point kar raha hoga usme ai_addr ke against ek structure ka address hoga toh woh address pass karana hain,
+3rd argument - aur uss structure ke andar bhi kuch information rehti hain uss structure ke jo members hain usme ek flexible array bhi hain toh uss array ke length ko bhi batana padega
+
+step 5:
+
+put the socket in listening mode, it becomes ready to accept connection / request
+
+toh iske liye - listen function hain isko pass karenge -
+
+1st arguement - server_socket_descriptor 
+
+2d argument - backlog queue size
+
+multiple client se ek saath bahut saari request aa sakati hain, apana code ek request accept karke usko process kar raha hain tab tak aur request aa rahi hain usko accept nahi kiya hain toh kahi toh bhi peeche queue mein accumulate karana padega, toh uss queue ki size kya honi chahiye woh hum specify kar sakate hain
+
+listen(server_socket_descriptor,100);
+
+/system_programming/network_programming$ vim server.c
+
+#include<stdio.h>
+#include<netdb.h>
+#include<sys/socket.h>
+#include<arpa/inet.h>
+#include<unistd.h>
+#include<errno.h>
+#include<string.h>
+
+int main()
+{
+int result;
+
+struct addrinfo hints;
+struct addrinfo *ptr2top_node;
+struct addrinfo *t;
+int socket_descriptor;
+
+memset(&hints,0,sizeof(hints));	      // very important to intialize all member to 0
+
+hints.ai_family=AF_INET;
+hints.ai_socktype=SOCK_STREAM;
+hints.ai_flag=AI_PASSIVE;
+
+// step 1 completed: we have created a structure and specified our preferences 
+
+result=getaddrinfo(NULL,"9696",&hints,&ptr2top_node);
+
+// getaddrinfo 0 if it succeeds
+
+/*
+1st argument is NULL and hints.ai_flag is set to AI_PASSIVE
+hence whenever the socket will be bound, it will be bound to a wildcard IP which means that whenever a request arrives on any IP of this machine and the port number in request is 9696, in that case the socket will receive the request
+
+2nd argument is port number in string form
+
+3rd argument is the address of struct addrinfo in which we have specified our preferences
+
+4th argument is address of a pointer of type struct adddrinfo *
+	
+the getaddrinfo function will generate a linked list and will assign then address of the top node to the pointer whose address we have passed as 4th argument
+
+members of struct addrinfo are as follows -
+
+ai_family
+ai_socktype
+ai_flag
+
+ai_protocol
+ai_addr
+ai_addrlen
+ai_cannoname
+and the pointer ai_next to point the next node
+
+we populated the first 3 members
+
+in the linked list that getaddrinfo will create the remaining members (as required) will get populated
+ 
+*/
+for(t=ptr2top_node;t!=NULL;t=t->ai_next)
+{
+socket_descriptor=socket(t->ai_family,t->socktype,t->ai_protocol);
+if(server_socket_descriptor==-1)
+{
+continue;
+// socket creation failed, the information in the current node could not be implemented
+// to create a socket
+}
+result=bind(server_socket_descriptor,t->ai_addr,t->ai_addrlen);
+if(result==-1)
+{
+close(server_socket_descriptor);
+// socket got create but bind failed, hence resource associated with created socket 
+// need to be released
+}
+else
+{
+break;
+}
+}
+
+freeaddrinfo(ptr2top_node);		// important to avoid memory leaks
+// to free the whole linked list
+
+if(t==NULL)	// None of the nodes in the linked list helped us in creating or binding 
+{		
+printf("Socket support is not available\n");
+return 0;
+}
+
+// if the control reaches here, it means a socket got created 
+// it it capable of accepting requests
+// it has been bound to port 9696
+// Now lets put the socket in listening mode
+
+
+listen(server_socket_descriptor,100);
+/*
+1st argument : the descriptor of the created socket
+2nd arguement : size of the backlog queue (we have specified 100)
+
+we need to accept the request from underlying queue
+Let say the request arrived, we accept it and we are processing it at that time 110 request arrive, they will get added to queue (only 100), 10 requests will be ignored
+Note : not refused
+if the request is ignore, client will retry for certain number of times
+if refursed then the client won't try again. Hence it is important to understand that after the backlog queue is full and a request arrives, it will be ignored not refused
+*/
+
+return 0;
+}	
+
+yeh complete nahi hua hain abhi
+
+next session sabse pehle accept function call karenge, woh kya karega ki - dekhega queue mein kuch hain kya ? agar hain toh extract kar leta hain
+aur queue mein kuch nahi hain toh application ko block kar dega, phir woh accept uss blocking mode se kab nikalega ? jab request aayegi queue mein aayegi aur queue se phir accept uthha lega, tab woh blocking mode se bahar aayega
+
+

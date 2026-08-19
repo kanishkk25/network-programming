@@ -1,0 +1,152 @@
+C Programming Language - Explicitly set port on client side
+
+previous session humne client ka ip and port determine karane ka code likha tha
+
+ab client side par woh socket jis port ke saath bind kiya jaata hain woh port number dynamic rehta hain, ab hum chahate hain ki hum specify kare, that should not be done ideally par kar sakate hain 
+
+toh dekhate hain kaise kiya jaaye -
+
+struct sockaddr_in se ek structure banayenge 
+hum specify karenga sin_family - AF_INET
+
+then hum chahenge jo sin_addr structure hain phir uss sin_addr mein jo s_addr hain usko underlying hardrware pe jitane bhi IP available hain usme se kisi ke saath bhi associate kardo toh INADDR_ANY
+
+aur hum sin_port ko host to network karke assign karenge (32333)	
+
+phir bind ko call karenge - 
+
+1st argument - client socket descriptor
+2nd argument - address of that structre
+3rd argument - size of structure
+
+let's do it ->
+
+client.c
+
+#include<stdio.h>
+#include<string.h>
+#include<errno.h>
+#include<sys/socket.h>
+#include<arpa/inet.h>
+#include<netdb.h>
+#include<unistd.h>
+
+int main(int c,char *v[])
+{
+struct sockaddr_in ipv4_client;
+socklen_t ipv4_client_size;
+
+struct sockaddr_storage client_sockaddr_storage;
+socklen_t client_sockaddr_size;
+struct sockaddr_in *client_sockaddr_in;
+char client_ip[16];
+short unsigned int client_port;
+
+char *ip_of_server_machine;
+char *port_of_server_machine;
+struct addrinfo hints;
+struct addrinfo *ptr2top_node;
+int result;
+int client_socket_descriptor;
+
+if(c!=4)
+{
+printf("Usage : ./client    ip_of_server_machine    port_of_server_socket_machine   message_to_send\n");
+return 0;
+}
+ip_of_server_machine=v[1];
+port_of_server_machine=v[2];
+
+memset(&hints,0,sizeof(hints));
+hints.ai_family=AF_INET;
+hints.ai_socktype=SOCK_STREAM;
+// do not set ai_flags as AI_PASSIVE on client side
+
+result=getaddrinfo(ip_of_server_machine,port_of_server_machine,&hints,&ptr2top_node);
+if(result==-1)
+{
+printf("Error : %s\n",gai_strerror(errno));
+return 0;
+}
+
+ipv4_client.sin_family=AF_INET;
+ipv4_client.sin_addr.s_addr=INADDR_ANY;
+ipv4_client.sin_port=htons(32333);
+
+ipv4_client_size=sizeof(ipv4_client);
+
+for(t=ptr2top_node;t!=NULL;t=t->ai_next)
+{
+client_socket_descriptor=socket(t->ai_family,t->ai_socktype,t->ai_protocol);
+if(client_socket_descriptor==-1) continue;
+
+result=bind(client_socket_descriptor,(struct sockaddr *)&ipv4_client,ipv4_client_size);
+if(result==-1)
+{
+close(client_socket_descriptor);
+}
+
+result=connect(client_socket_descriptor,t->ai_addr,t->ai_addrlen);
+if(result==-1)
+{
+close(client_socket_descriptor);
+continue;
+}
+break;
+}
+
+freeaddrinfo(ptr2top_node);
+if(t==NULL)
+{
+printf("Unable to connect ot %s (%s) \n",ip_of_server_machine,port_of_server_socket);
+return 0;
+}
+printf("Connection with server established\n");
+
+client_sockaddr_size=sizeof(struct sockaddr_storage);
+
+result=getsockname(client_socket_descriptor,(struct sockaddr *)&client_sockaddr_storage,&client_sockaddr_size);
+if(result==0)
+{
+if(client_sockaddr_size<=sizeof(struct sockaddr_storage))
+{
+client_sockaddr_in=(struct sockaddr_in)&client_sockaddr_storage;
+strcpy(client_ip,inet_ntoa(client_sockaddr_in->sin_addr));
+client_ip=netohs(client_sockaddr_in->sin_port);
+printf("Client IP/Port is %s (%u)\n",client_ip,client_port);
+}
+else
+{
+printf("Unable to determine client ip/port\n");
+}
+}
+else
+{
+printf("Unable to determine client ip/port\n");
+}
+// some code to send request data
+
+// some code to receive resonse data
+
+close(client_socket_descriptor);
+return 0;
+}
+
+
+ipv4_client.sin_family=AF_INET;
+ipv4_client.sin_addr.s_addr=INADDR_ANY;
+ipv4_client.sin_port=htons(32333);
+
+ipv4_client_size=sizeof(ipv4_client);
+
+
+result=bind(client_socket_descriptor,(struct sockaddr *)&ipv4_client,ipv4_client_size);
+
+
+this is how we can bind the client to a specific port, should not be done ideally
+
+basically jab ek socket bind hota hain kisi port ke saath, toh aap usko jab close karate ho toh close function turant return karwa deta hain par thhoda sa time lagata hain resources release karane ke liye jo bhi hain
+
+pehle dynamic port tha toh jo port available hain woh le liya jaata tha 
+
+par abhi specific port kar diya (32333) aur application chal ke khatam ho gayi par jab next time chalayenge toh ho sakata hain woh release na ho tab tak toh isliye woh use mein nahi aa paayega, matalab socket se woh port (32333) bind nahi kar paaya kyuki woh port free nahi tha

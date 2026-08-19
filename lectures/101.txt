@@ -1,0 +1,277 @@
+C Programming Language - Send arguments to thread
+
+Now let's understand mutithreading ka kya faayada ho sakta hain -
+
+jaise maanlo do functions hain -
+
+Function A			Functions B
+
+dono alag-alag thread par chal rahe hain
+
+toh technically toh woh parallel mein nahi chalenge, thhodi der function A ka kaam - phir thhod der Function B ka kaam - phir thhodi der function A ka kaam - phir thhodi der function b ka kaam
+
+toh apan maan le function A agar a time mein complete hota hain aur function B b time mein complete hota hain aur agar multithreading nahi hoti toh 
+
+a+b time mein complete hota 
+
+agar multithreading hain toh -
+
+a + b + (context switching time)
+
+toh yeh toh nukasaan ho raha hain, multithraeding se
+
+so that's not true
+
+maanlo aisa kuch bana rahe hain ki saamne wale ko 2 question type karane hain, phir ek button hain Get Answers jis par click karata hain ya text user interface mein bhi -
+
+Enter a question: 
+Enter another question:
+
+phir logic to search answers of both the questions and display answer
+
+isme maanlo kuch k time lag raha hain
+
+ab ek dusara approach try karate hain -
+
+
+Enter a question: 
+
+jaise hi 1st question type karake saamne wala enter hit karega toh iss point par ek seperate thread ban jaaye 
+
+[diagram]
+
+seperate thread - look for answer to question 1
+
+ab yeh code chalata rahega aur saamne wala jo likha hua aa raha hain
+
+Enter another question: 
+iske against jo type kar raha hain woh bhi chalata rahega, ek input activity hain woh bhi chalati rahegi aur seperate thread par bhi kaam chalata rahega
+
+iske liye hume yeh samajhana padega ki hamari machine mein bahut saare processors hote hain, generally hum kehte hain 1 processor, toh woh jo 1 processor rehta hain woh Main processor rehta hain, but that is not the only processor in our cpu
+
+hard disk ka apana ek processor, monitor ka apana ek processor hain, keyboard ka apana ek processor hain, har I/O device ka apana ek processor hain, network interface card ka apana ek processor hain
+
+toh yeh look for answer to question 1 activity chalati rahegi Main Processor par, aur input ka kaam bhi chalata rahega saamne wale ka
+
+ab jo woh 2nd question type kar raha hain aur enter hit kar raha hain tab tak yeh sochiye ki 1st question ka answer bhi dhoondha jaa chuka hoga, 
+
+toh yeh jo time lagega woh agar u time hain, toh woh u time definitely kam hoga k time se
+u < k
+
+yeh nahi keh rahe hain ki puri tarah se parallel mein processing huyi hain, par kuch samay aisa aaya hain ki parallel mein processing huyi hain, context switchin hoti rahegi
+
+par 2nd question type karane mein time lag raha hain toh some kind of input time lag raha hain, matalab jab bhi koi I/O activity hoti hain tab Main Processor idle padha rehta hain, toh Main Processor ka woh idle time utilize karane ke liye hum multithreading implement karle
+
+Multithreading ka matalab yeh nahi hain ki Main Processor ka jo idle time hain woh 100% utilize karana, par bahut saara time utilize ho jaayega, but haa agar I/O activity hi nahi hain toh shayad multithreading useless hain, par agar kisi tarah ki I/O activity involved hain toh multithreading agar implement karenga toh benifit milega
+
+next -
+
+seperate thread par jo function chalane wala hain -
+
+void * sam(void *ptr)
+{
+
+}
+
+hum chahte hain ki isko 2 numbers pass kare, aur unn 2 numbers ka yeh sum compute kare, toh yeh kaise kiya jaa sake ? 
+
+woh 2 numbers hum ek structure mein wrap kar denge - aur iss structure ka address sam ko de denge ptr mein - phir uss structure ka address typecase kar lenge aur ek pointer ko assing kar denge (jo bhi strcture ka type hain) 
+
+hum structure main function mein create karenge toh hume yeh dhyaana rakhana hain ki aisa na ho ki jab sam chal raha ho toh uss structure ki death ho chuki, toh aisa nahi hoga kyuki hum main mein pthread_join ko call karenge, malatab main ko tab tak rokenge jab tak sam (seperate thread) ka kaam khatam nahi hota
+
+par aise scenarios aa sakate hain ki main se ek thread bana aur uss thread se ek aur thread bana -
+
+main   ->   t1     ->    t2
+
+t1 mein ek structure hain uska address t2 thread mein pass kiya par t2 ka code chalane se pehle t1 khatam ho gaya, ab agar t2 khatam ho jaaye toh uss structre ki death ho jaayegi toh woh jo address t2 mein pahucha hain uss address ka material jab t2 access karane ki koshish karega toh undefine dehaviour
+
+toh aise scenario mein kaise pass karana woh dekhenge
+
+par abhi toh yeh maan ke chal rahe hain ki jiss structure ka address pass karenge woh structure marega nahi jab tak woh function khatam nahi hota 
+
+let's do it ->
+
+#include<stdio.h>
+#include<pthread.h>
+struct data_wrapper
+{
+int num1;
+int num2;
+};
+
+void * sam(void *ptr)
+{
+struct data_wrapper *p;
+p=(struct data_wrapper *)ptr;
+int sum;
+sum=p->num1 + p->nums;
+printf("Total is %d\n",sum);
+return NULL;
+}
+int main()
+{
+pthread_t thread_id;
+int st;
+struct data_wrapper s;
+s.num1=10;
+s.num2=20;
+st=pthread_create=(&thread_it,NULL,sam,(void *)&s);
+if(st!=0)
+{
+printf("Unable to create thread\n");
+return 0;
+}
+pthread_join(thread_id,NULL);
+return 0;
+}
+
+
+st=pthread_create=(&thread_it,NULL,sam,(void *)&data);
+
+4th argument basically ek address pass karana hain jo uss function, jiska address 3rd argument mein diya hain, uske parameter variable mein pahuchega
+
+
+ab woh scenario jisme ek thread se dusara thread and usse ek aur thread, ke liye solution 
+
+#include<stdio.h>
+#include<pthread.h>
+struct data_wrapper
+{
+int num1;
+int num2;
+};
+
+void * sam(void *ptr)
+{
+struct data_wrapper *p;
+p=(struct data_wrapper *)ptr;
+int sum;
+sum=p->num1 + p->nums;
+
+free(p);
+
+printf("Total is %d\n",sum);
+return NULL;
+}
+int main()
+{
+pthread_t thread_id;
+int st;
+struct data_wrapper *s;
+s=(struct data_wrapper *)malloc(sizeof(struct data_wrapper));
+s->num1=10;
+s->num2=20;
+st=pthread_create=(&thread_it,NULL,sam,(void *)s);
+if(st!=0)
+{
+printf("Unable to create thread\n");
+free(s);
+return 0;
+}
+pthread_join(thread_id,NULL);
+
+return 0;
+}
+
+next -
+
+ab maanlo main thread se 5 thread create karane hain aur har thread ko ek number bhejana hain
+
+toh pehle agar main thread create hua phir yeh 5 thread mein se 1st thread create huye toh iska matalab nahi hain ki yeh 1st thread ka code pehle chal padega
+
+jab bhi naya thread create kiya jaayega toh internal queue re-shuffle hogi
+
+
+#include<stdio.h>
+#include<pthread.h>
+void * sam(void *ptr)
+{
+int *p;
+p=(int *)ptr;
+printf("%d\n",*p);
+return NULL;
+}
+int main()
+{
+pthread_t thread_id[5];
+int a,b;
+b=101;
+for(a=0;a<=4;a++)
+{
+pthread_create(&thread_id[a],NULL,sam,&b);
+b++;
+}
+for(a=0;<=4;a++)
+{
+pthread_join(thread_id[a],NULL);
+}
+return 0;
+}
+
+hum in threads ke paas number nahi pahucha rahe hain, address pahucha rahe hain b ka, toh jab kisi thread ka number aayega tab b ki jo value hogi woh print hogi
+
+toh kya kiya jaaye -
+
+#include<stdio.h>
+#include<pthread.h>
+void * sam(void *ptr)
+{
+int *p;
+p=(int *)ptr;
+printf("%d\n",*p);
+return NULL;
+}
+int main()
+{
+pthread_t thread_id[5];
+int numbers[5];
+int a,b;
+b=101;
+for(a=0;a<=4;a++)
+{
+numbers[a]=b;
+pthread_create(&thread_id[a],NULL,sam,&(void *)numbers[a]);
+b++;
+}
+for(a=0;<=4;a++)
+{
+pthread_join(thread_id[a],NULL);
+}
+return 0;
+}
+
+ab sequence bhale hi kuch bhi ho par 101, 102, 103, 104, 105 hi print hoga, sequence kuch bhi ho kyuki queue re-shuffle hoti hain toh kisi bhi thread ka pehle number aa sakata hain
+
+next -
+
+tarika galat hain bas pata hona chahiye -
+
+#include<stdio.h>
+#include<pthread.h>
+void * sam(void *ptr)
+{
+int p;
+p=(int)ptr;
+printf("%d\n",p);
+return NULL;
+}
+int main()
+{
+pthread_t thread_id[5];
+int a,b;
+b=101;
+for(a=0;a<=4;a++)
+{
+pthread_create(&thread_id[a],NULL,sam,(void *)b);
+b++;
+}
+for(a=0;<=4;a++)
+{
+pthread_join(thread_id[a],NULL);
+}
+return 0;
+}
+
+matalab int ko address mein typcaste karake bheja
+
+aur udhar address ko int mein typecaste kar diya

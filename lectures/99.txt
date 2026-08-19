@@ -1,0 +1,404 @@
+C Programming Language - Send / Receive data
+
+last session client side par jo explicitly port number set kiya tha woh code hatana hain
+
+now let's se how to send and revceive data -
+
+toh iske liye 2 functions hain -
+
+1. send()
+
+Purpose: Sends data from your program through a connected socket to the other side.
+
+ssize_t send(
+    int sockfd,
+    const void *buf,
+    size_t len,
+    int flags
+);
+
+Parameters:
+
+sockfd → socket through which you want to send data.
+buf → pointer to the data you want to send.
+len → number of bytes you want to send.
+flags → special options controlling how the data is sent. Usually 0.
+
+Return value:
+
+positive number → number of bytes actually sent.
+-1 → error.
+
+recv()
+
+Purpose: Receives data from the other side through a socket into your program.
+
+ssize_t recv(
+    int sockfd,
+    void *buf,
+    size_t len,
+    int flags
+);
+
+Parameters:
+
+sockfd → socket from which you want to receive data.
+buf → memory where the received data will be stored.
+len → maximum number of bytes you want to receive.
+flags → special options controlling how data is received. Usually 0.
+
+Return value:
+
+positive number → number of bytes actually received.
+0 → the other side has closed the connection.
+-1 → error.
+
+
+client.c
+
+#include<stdio.h>
+#include<string.h>
+#include<errno.h>
+#include<sys/socket.h>
+#include<arpa/inet.h>
+#include<netdb.h>
+#include<unistd.h>
+
+int main(int c,char *v[])
+{
+char *request_data;
+size_t request_data_size;
+
+char response_data[1025];
+size_t response_data_size;
+
+ssize_t bytes_send,bytes_received;	// s for signed
+
+struct sockaddr_storage client_sockaddr_storage;
+socklen_t client_sockaddr_size;
+struct sockaddr_in *client_sockaddr_in;
+char client_ip[16];
+short unsigned int client_port;
+
+char *ip_of_server_machine;
+char *port_of_server_machine;
+struct addrinfo hints;
+struct addrinfo *ptr2top_node;
+int result;
+int client_socket_descriptor;
+
+if(c!=4)
+{
+printf("Usage : ./client    ip_of_server_machine    port_of_server_socket_machine   message_to_send\n");
+return 0;
+}
+ip_of_server_machine=v[1];
+port_of_server_machine=v[2];
+request_data=v[3];
+
+memset(&hints,0,sizeof(hints));
+hints.ai_family=AF_INET;
+hints.ai_socktype=SOCK_STREAM;
+// do not set ai_flags as AI_PASSIVE on client side
+
+result=getaddrinfo(ip_of_server_machine,port_of_server_machine,&hints,&ptr2top_node);
+if(result==-1)
+{
+printf("Error : %s\n",gai_strerror(errno));
+return 0;
+}
+
+for(t=ptr2top_node;t!=NULL;t=t->ai_next)
+{
+client_socket_descriptor=socket(t->ai_family,t->ai_socktype,t->ai_protocol);
+if(client_socket_descriptor==-1) continue;
+
+result=connect(client_socket_descriptor,t->ai_addr,t->ai_addrlen);
+if(result==-1)
+{
+close(client_socket_descriptor);
+continue;
+}
+break;
+}
+
+freeaddrinfo(ptr2top_node);
+if(t==NULL)
+{
+printf("Unable to connect ot %s (%s) \n",ip_of_server_machine,port_of_server_socket);
+return 0;
+}
+printf("Connection with server established\n");
+
+client_sockaddr_size=sizeof(struct sockaddr_storage);
+
+result=getsockname(client_socket_descriptor,(struct sockaddr *)&client_sockaddr_storage,&client_sockaddr_size);
+if(result==0)
+{
+if(client_sockaddr_size<=sizeof(struct sockaddr_storage))
+{
+client_sockaddr_in=(struct sockaddr_in)&client_sockaddr_storage;
+strcpy(client_ip,inet_ntoa(client_sockaddr_in->sin_addr));
+client_ip=netohs(client_sockaddr_in->sin_port);
+printf("Client IP/Port is %s (%u)\n",client_ip,client_port);
+}
+else
+{
+printf("Unable to determine client ip/port\n");
+}
+}
+else
+{
+printf("Unable to determine client ip/port\n");
+}
+
+// code to send data
+
+request_data=v[3];
+request_data_size=strlen(request_data);
+
+bytes_sent=send(client_socket_descriptor,request_data,request_data_size,0);
+if(bytes_sent==-1)
+{
+if(errno==EINTR)
+{
+printf("Sending interrupted\n");
+// ideally we should try to resend
+}
+else
+{
+printf("Unable to send data\n")
+printf("Error : %s\n",strerror(errno));
+}
+}
+if(bytes_sent!=-1 && bytes_send<request_data_size)
+{
+printf("Unable to send all bytes\n");
+// ideally we should try to send the remaining bytes (re	quest_data_size - bytes_sent)
+}
+if(bytes_sent==reqesut_data_size)
+{
+}
+
+
+// code to receive data
+reposne_data_size=1024;
+
+bytes_received=recv(client_socket_descriptor,response_data,response_data_size,0);
+if(bytes_received==0)
+{
+printf("Connection closed bye the peer\n");
+}
+if(bytes_received==-1)
+{
+if(errno==EINTR)
+{
+printf("Receiving intrrupted\n");
+// ideally we should try to receive again
+}
+else
+{
+printf("Unable to receive data\n");
+printf("Error : %s\n",strerror(errno));
+}
+}
+if(bytes_received>0)
+{
+response_data[bytes_received]='\0';	// very important if we want to print response
+printf("Response received is as follows\n");
+printf("%s\n",response_data);
+}
+close(client_socket_descriptor);
+return 0;
+}
+
+
+
+
+server.c 
+
+#include<stdio.h>
+#include<string.h>
+#include<errno.h>
+#include<sys/socket.h>
+#include<arpa/inet.h>
+#include<netdb.h>
+#include<unistd.h>
+
+int main()
+{
+char request_data[1025];
+char response_data[1025];
+
+size_t request_data_size;
+size_t response_data_size;
+
+ssize_t bytes_send,bytes_received;	// s for signed
+
+struct addrinfo hints;
+int result;
+struct addrinfo *ptr2top_node,*t;
+int server_socket_descriptor;
+struct sockaddr_storage client_socket_storage;
+socklen_t client_sockaddr_size;
+struct sockaddr_in *client_sockaddr_in;
+int client_socket_descriptor;
+
+char client_ip[16];
+unsigned short int client_port;
+
+// setup hints structures
+memset(&hints,0,sizeof(hints));
+hints.ai_family=AF_INET;
+hints.ai_socktype=SOCK_STREAM;
+hints.ai_flags=AI_PASSIVE;
+
+// call to getaddrinfo
+result=getaddrinfo(NULL,"9696",&hints,&ptr2top_node);
+if(result==-1)
+{
+printf("Error : %s\n",gai_strerror(errno));
+return 0;
+}
+
+for(t=ptr2top_node;t!=NULL;t=t->ai_next)
+{
+server_socket_descriptor=socket(t->ai_family,t->ai_socktype,t->ai_protocol);
+if(server_socket_descriptor==-1) continue;
+
+result=bind(server_socket_descriptor,t->ai_addr,t->addrlen);
+if(result==-1)
+{
+close(server_socket_descriptor);
+continue;
+}
+break; 	// socket creation and bind call done with no errors
+}
+
+// release linked list
+freeaddrinfo(ptr2top_node);
+
+if(t==NULL)
+{
+printf("Unable to create socket\n");
+return 0;
+}
+
+result=listen(server_socket_descriptor,100);
+if(result==-1)
+{
+printf("Unable to listen for connections\n");
+printf("Error : %s\n",strerror(errno));
+close(server_socket_descriptor);
+return 0;
+}
+
+while(1)
+{
+printf("Server is ready to accept connection on port 9696\n");
+
+client_sockaddr_size=sizeof(struct sockaddr_storage);
+
+// accepting connection from backlog queue, if backlog queue is empty wait for connection
+
+client_socket_descriptor=accept(server_socket_descriptor,(struct sockaddr *)&client_socket_storage,&client_sockaddr_size);
+
+if(client_socket_descriptor==-1)
+{
+printf("Unable to accept connection request\n");
+printf("Error : %s\n",strerror(errno));
+continue;
+}
+
+printf("Connection request arrived and accepted\n");
+
+if(client_sockaddr_size<=sizeof(struct sockaddr_storage))
+{
+if(client_sockaddr_storage.ss_family==AF_INET)
+{
+client_sockaddr_in=(struct sockaddr_in *)&client_sockaddr_storage;
+
+strcpy(client_ip,inet_ntoa(client_sockaddr_in->sin_addr));
+client_port=ntohs(client_sockaddr_in->sin_port);
+
+printf("Client IP/Port is %s (%u)\n",client_ip,client_port);
+}
+}
+else
+{
+printf("Unable to determine client IP/port\n");
+}
+
+// code to extract request data
+
+bytes_received=recv(client_socket_descriptor,request_data,request_data_size,0);
+if(bytes_received==0)
+{
+printf("Connection closed bye the peer\n");
+} 
+if(bytes_received==-1)
+{
+if(errno==EINTR)
+{
+printf("Receiving intrrupted\n");
+// ideally we should try to receive again
+}
+else
+{
+printf("Unable to receive data\n");
+printf("Error : %s\n",strerror(errno));
+}
+}
+if(bytes_received>0)
+{
+request_data[bytes_received]='\0';	// very important if we want to print
+printf("Response received is as follows\n");
+printf("%s\n",request_data);
+}
+
+
+// code to send response
+
+strcpy(response_data,"Thank you for calling Thinking Machines");
+response_data_size=strlen(response_data);
+
+bytes_sent=send(client_socket_descriptor,response_data,response_data_size,0);
+if(bytes_sent==-1)
+{
+if(errno==EINTR)
+{
+printf("Sending interrupted\n");
+// ideally we should try to resend
+}
+else
+{
+printf("Unable to send data\n")
+printf("Error : %s\n",strerror(errno));
+}
+}
+if(bytes_sent!=-1 && bytes_sent<response_data_size)
+{
+printf("Unable to send all response data\n");
+// ideally we should try to send the remaining bytes (response_data_size - bytes_sent)
+}
+if(bytes_sent==response_data_size)
+{
+printf("Response data sent it as follows\n");
+printf("%s\n",response_data);
+}
+
+close(client_socket_descriptor);		// close client connection
+}
+
+close(server_socket_descriptor);
+return 0;
+}
+
+
+
+
+send() - Your program → other side
+recv() - Other side → your program
+
+send() is used when your program wants to send data through a socket to the other side.
+recv() is used when your program wants to receive data from the other side through a socket.
